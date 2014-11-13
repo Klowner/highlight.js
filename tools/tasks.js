@@ -260,7 +260,7 @@ tasks.glob = function(options, blobs, done) {
       return;
     }
 
-    async.mapLimit(matches, 128, function(match, matchcb) {
+    async.mapLimit(matches, 50, function(match, matchcb) {
       var filename = globoptions.cwd ? path.join(globoptions.cwd, match)
                                      : match;
       Blob.readFile(filename, encoding, matchcb);

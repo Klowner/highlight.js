@@ -1,13 +1,18 @@
 'use strict';
 
-var _        = require('lodash');
-var del      = require('del');
-var Registry = require('gear').Registry;
-var path     = require('path');
-var fs       = require('fs');
+var _     = require('lodash');
+var async = require('async');
+var del   = require('del');
+var fs    = require('fs');
+var gear  = require('gear');
+var glob  = require('glob');
+var path  = require('path');
 
 var parseHeader = require('./utility').parseHeader;
-var tasks       = require('gear-lib');
+var tasks       = _.omit(require('gear-lib'), 'glob');
+
+var Registry = gear.Registry,
+    Blob     = gear.Blob;
 
 tasks.clean = function(directories, blobs, done) {
   directories = _.isString(directories) ? [directories] : directories;
@@ -242,5 +247,26 @@ tasks.templateDemo = function(options, blobs, done) {
 };
 tasks.templateDemo.type = 'collect';
 
+tasks.glob = function(options, blobs, done) {
+  options = options || {};
+
+  var pattern     = options.pattern,
+      globoptions = options.options || {},
+      encoding    = options.encoding || 'utf8';
+
+  glob(pattern, globoptions, function(err, matches) {
+    if(err) {
+      done(err);
+      return;
+    }
+
+    async.mapLimit(matches, 128, function(match, matchcb) {
+      var filename = globoptions.cwd ? path.join(globoptions.cwd, match)
+                                     : match;
+      Blob.readFile(filename, encoding, matchcb);
+    }, function(err, results) { done(err, blobs.concat(results)); });
+  });
+};
+tasks.glob.type = 'collect';
 
 module.exports = new Registry({ tasks: tasks });
